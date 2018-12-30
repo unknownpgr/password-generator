@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<title>Page Title</title>
+	<script src="./sha512.js"></script>
+	<script src="./pbkdf2.js"></script>
+	<style>
+
+	</style>
+</head>
+
+<body>
+	<div style="margin:32px;font-size:200%;text-align: center;">This site may be updated and the algorithm will be
+		different. <br>
+		Please download the project to safely use this algorithm.</div>
+	<div>&#8203;</div>
+	<div id="outerFrame">
+		<div id="innerFrame" style="text-align:center">
+			<div class="label">Site</div>
+			<input type="text" id="siteInput">
+			<div class="label">Email</div>
+			<input type="text" id="emailInput">
+			<div class="label">Master password</div>
+			<input type="password" id="masterInput">
+			<div class="label">Password re-input</div>
+			<input type="password" id="masterInput2">
+			<div>&#8203;</div>
+			<button onclick="createButton()">Generate Password</button>
+			<div>&#8203;</div>
+			<textarea id="resultTag" cols="30" rows="1" style="
+			display:inline-block;
+			resize: none;
+			border: none;
+			background-color: #eee;
+			color: #fff;
+			text-align: center;
+			text-overflow: ellipsis;"
+			 readonly disabled></textarea>
+			<div>&#8203;</div>
+			<div id="infoDiv">&#8203;</div>
+		</div>
+	</div>
+	<script>
+		var iter1 = 0
+		var iter2 = 0
+
+		function sha512Encrypt(data) {
+			return CryptoJS.SHA512(data).toString()
+		}
+
+		function pbkdf2Encrypt(data, salt, iteration, keySize = 512) {
+			return CryptoJS.PBKDF2(data, salt, { keySize: keySize / 32, iterations: iteration }).toString();
+		}
+
+		//Convert string to number of given digit.
+		function createIntHash(data, digit = 3) {
+			str = sha512Encrypt(data) + ''
+			var sum = 1
+			for (var i = 0; i < str.length; i++) sum /= str.charCodeAt(i)
+			return sum.toString().substr(2, digit) * 1
+		}
+
+		function createKey(privateKey, saltKey) {
+			var encryptedSalt = sha512Encrypt(saltKey)
+			iter1 = createIntHash(saltKey)
+			var midKey = pbkdf2Encrypt(saltKey, encryptedSalt, iter1)
+			return pbkdf2Encrypt(privateKey, midKey, iter1)
+		}
+
+		function createPassword(site, masterKey, email) {
+			var key = createKey(masterKey, email)
+			iter2 = createIntHash(key)
+			var key2 = pbkdf2Encrypt(site, key, iter2) + ''
+			var password = key2.substr(0, 2) + '!' + key2.substr(2, 4) + '@' + key2.substr(6, 6)
+			return password
+		}
+
+		function createButton(event) {
+			var site = siteInput.value.trim().toLowerCase()
+			var email = emailInput.value.trim().toLowerCase()
+			var master = masterInput.value.trim()
+			var master2 = masterInput2.value.trim()
+
+			if (!(site && email && master && master2)) return resultTag.innerText = '...'
+			if (master != master2) return infoDiv.innerText = 'Password and re-input password are different.'
+			infoDiv.innerText = 'Generating...'
+			setTimeout(() => {
+				resultTag.innerText = createPassword(site, master, email)
+				copyToClipboard()
+				infoDiv.innerText = 'Password of ' + site + ' generated.\n Iteration 1 : ' + iter1 + '\n Iteration2 : ' + iter2 + '\n\n Password copied to clipboard.'
+			}, 1);
+		}
+
+		function copyToClipboard() {
+			resultTag.disabled = false
+			resultTag.select();
+			document.execCommand('copy');
+			resultTag.disabled = true
+			var sel = window.getSelection ? window.getSelection() : document.selection;
+			if (sel) if (sel.removeAllRanges) sel.removeAllRanges()
+			else if (sel.empty) sel.empty()
+		}
+
+		createButton()
+
+		resultTag.disabled = true
+	</script>
+</body>
+
+</html>
